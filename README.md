@@ -78,12 +78,19 @@ disks: FreedomNAS creates its data pools on them from the web interface.
 2. Write it to the system disk or USB stick. **Everything on that disk is
    erased.**
 
-   - with [balenaEtcher](https://etcher.balena.io/); or
+   - with [Raspberry Pi Imager](https://www.raspberrypi.com/software/)
+     ("Use custom") or [Rufus](https://rufus.ie/), which read `.zst` files
+     directly;
    - from a terminal, replacing `/dev/sdX` with the right disk:
 
      ```sh
      zstd -dc debian.img.zst | sudo dd of=/dev/sdX bs=4M status=progress conv=fsync
      ```
+
+   - or decompress it first (`zstd -d debian.img.zst`, or
+     [PeaZip](https://peazip.github.io/) on Windows) and write the `.img`
+     with any tool. balenaEtcher does not read `.zst` files, only the
+     decompressed `.img`.
 
    The ISOs are written the same way, without `zstd`:
 
