@@ -79,7 +79,7 @@ disks: FreedomNAS creates its data pools on them from the web interface.
    erased.**
 
    - with [Raspberry Pi Imager](https://www.raspberrypi.com/software/)
-     ("Use custom") or [Rufus](https://rufus.ie/), which read `.zst` files
+     ("Use custom") or [Rufus](https://rufus.ie/) 4.7 or newer, which read `.zst` files
      directly;
    - from a terminal, replacing `/dev/sdX` with the right disk:
 
