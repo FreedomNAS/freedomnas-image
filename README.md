@@ -38,9 +38,9 @@ web interface.
 | `artix-openrc.img.zst` | Artix Linux | OpenRC |
 | `artix-dinit.img.zst` | Artix Linux | dinit |
 | `artix-runit.img.zst` | Artix Linux | runit |
-| `gentoo.img.zst` | Gentoo | OpenRC (dev builds) |
+| `gentoo.img.zst` | Gentoo | OpenRC |
 | `freedomnas-live.iso` | installer for the Linux editions | — |
-| `freedomnas-live-freebsd.iso` | installer for FreeBSD (dev builds) | — |
+| `freedomnas-live-freebsd.iso` | installer for FreeBSD | — |
 
 If you have no preference, take **Debian**.
 
