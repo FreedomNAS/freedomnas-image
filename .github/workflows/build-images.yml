@@ -75,13 +75,16 @@ jobs:
           cands="azure.archive.ubuntu.com archive.ubuntu.com us.archive.ubuntu.com"
           [ ! -f /etc/apt/apt-mirrors.txt ] || cands="$(sed -n 's|^https\{0,1\}://\([^/[:space:]]*\)/.*|\1|p' /etc/apt/apt-mirrors.txt) $cands"
           cands="$(sed -n 's|^URIs: https\{0,1\}://\([^/]*\)/.*|\1|p' /etc/apt/sources.list.d/ubuntu.sources) $cands"
-          best="" best_speed=0
+          : > "$RUNNER_TEMP/mirrors"
           for m in $(printf '%s\n' $cands | awk '!seen[$0]++'); do
-            speed=$(curl -fs -o /dev/null -m 20 -w '%{speed_download}' "http://$m/ubuntu/dists/noble/main/binary-amd64/Packages.xz") || speed=0
+            speed=$(curl -fs -o /dev/null -m 20 -w '%{speed_download}' "http://$m/ubuntu/dists/noble/main/binary-amd64/Packages.xz") || continue
             echo "$m: $speed bytes/s"
-            if awk -v a="$speed" -v b="$best_speed" 'BEGIN { exit !(a > b) }'; then best=$m best_speed=$speed; fi
+            echo "$speed $m" >> "$RUNNER_TEMP/mirrors"
           done
-          [ -z "$best" ] || sudo sed -i -E "s|^URIs: .*|URIs: http://$best/ubuntu/|" /etc/apt/sources.list.d/ubuntu.sources
+          if [ -s "$RUNNER_TEMP/mirrors" ]; then
+            sort -rn "$RUNNER_TEMP/mirrors" | awk '{ printf "http://%s/ubuntu/\tpriority:%d\n", $2, NR }' | sudo tee /etc/apt/fnas-mirrors.txt
+            sudo sed -i -E "s|^URIs: .*|URIs: mirror+file:/etc/apt/fnas-mirrors.txt|" /etc/apt/sources.list.d/ubuntu.sources
+          fi
           grep '^URIs' /etc/apt/sources.list.d/ubuntu.sources
           sudo apt-get update
           sudo apt-get install -y arch-install-scripts gnupg rsync xz-utils curl jq python3-venv zstd xorriso
@@ -138,13 +141,16 @@ jobs:
           cands="azure.archive.ubuntu.com archive.ubuntu.com us.archive.ubuntu.com"
           [ ! -f /etc/apt/apt-mirrors.txt ] || cands="$(sed -n 's|^https\{0,1\}://\([^/[:space:]]*\)/.*|\1|p' /etc/apt/apt-mirrors.txt) $cands"
           cands="$(sed -n 's|^URIs: https\{0,1\}://\([^/]*\)/.*|\1|p' /etc/apt/sources.list.d/ubuntu.sources) $cands"
-          best="" best_speed=0
+          : > "$RUNNER_TEMP/mirrors"
           for m in $(printf '%s\n' $cands | awk '!seen[$0]++'); do
-            speed=$(curl -fs -o /dev/null -m 20 -w '%{speed_download}' "http://$m/ubuntu/dists/noble/main/binary-amd64/Packages.xz") || speed=0
+            speed=$(curl -fs -o /dev/null -m 20 -w '%{speed_download}' "http://$m/ubuntu/dists/noble/main/binary-amd64/Packages.xz") || continue
             echo "$m: $speed bytes/s"
-            if awk -v a="$speed" -v b="$best_speed" 'BEGIN { exit !(a > b) }'; then best=$m best_speed=$speed; fi
+            echo "$speed $m" >> "$RUNNER_TEMP/mirrors"
           done
-          [ -z "$best" ] || sudo sed -i -E "s|^URIs: .*|URIs: http://$best/ubuntu/|" /etc/apt/sources.list.d/ubuntu.sources
+          if [ -s "$RUNNER_TEMP/mirrors" ]; then
+            sort -rn "$RUNNER_TEMP/mirrors" | awk '{ printf "http://%s/ubuntu/\tpriority:%d\n", $2, NR }' | sudo tee /etc/apt/fnas-mirrors.txt
+            sudo sed -i -E "s|^URIs: .*|URIs: mirror+file:/etc/apt/fnas-mirrors.txt|" /etc/apt/sources.list.d/ubuntu.sources
+          fi
           grep '^URIs' /etc/apt/sources.list.d/ubuntu.sources
           sudo apt-get update
           sudo apt-get install -y qemu-system-x86 qemu-utils xorriso rsync zstd curl jq python3-venv
@@ -192,13 +198,16 @@ jobs:
           cands="azure.archive.ubuntu.com archive.ubuntu.com us.archive.ubuntu.com"
           [ ! -f /etc/apt/apt-mirrors.txt ] || cands="$(sed -n 's|^https\{0,1\}://\([^/[:space:]]*\)/.*|\1|p' /etc/apt/apt-mirrors.txt) $cands"
           cands="$(sed -n 's|^URIs: https\{0,1\}://\([^/]*\)/.*|\1|p' /etc/apt/sources.list.d/ubuntu.sources) $cands"
-          best="" best_speed=0
+          : > "$RUNNER_TEMP/mirrors"
           for m in $(printf '%s\n' $cands | awk '!seen[$0]++'); do
-            speed=$(curl -fs -o /dev/null -m 20 -w '%{speed_download}' "http://$m/ubuntu/dists/noble/main/binary-amd64/Packages.xz") || speed=0
+            speed=$(curl -fs -o /dev/null -m 20 -w '%{speed_download}' "http://$m/ubuntu/dists/noble/main/binary-amd64/Packages.xz") || continue
             echo "$m: $speed bytes/s"
-            if awk -v a="$speed" -v b="$best_speed" 'BEGIN { exit !(a > b) }'; then best=$m best_speed=$speed; fi
+            echo "$speed $m" >> "$RUNNER_TEMP/mirrors"
           done
-          [ -z "$best" ] || sudo sed -i -E "s|^URIs: .*|URIs: http://$best/ubuntu/|" /etc/apt/sources.list.d/ubuntu.sources
+          if [ -s "$RUNNER_TEMP/mirrors" ]; then
+            sort -rn "$RUNNER_TEMP/mirrors" | awk '{ printf "http://%s/ubuntu/\tpriority:%d\n", $2, NR }' | sudo tee /etc/apt/fnas-mirrors.txt
+            sudo sed -i -E "s|^URIs: .*|URIs: mirror+file:/etc/apt/fnas-mirrors.txt|" /etc/apt/sources.list.d/ubuntu.sources
+          fi
           grep '^URIs' /etc/apt/sources.list.d/ubuntu.sources
           sudo apt-get update
           sudo apt-get install -y qemu-system-x86 qemu-utils xorriso xz-utils rsync curl jq python3-venv
@@ -250,13 +259,16 @@ jobs:
           cands="azure.archive.ubuntu.com archive.ubuntu.com us.archive.ubuntu.com"
           [ ! -f /etc/apt/apt-mirrors.txt ] || cands="$(sed -n 's|^https\{0,1\}://\([^/[:space:]]*\)/.*|\1|p' /etc/apt/apt-mirrors.txt) $cands"
           cands="$(sed -n 's|^URIs: https\{0,1\}://\([^/]*\)/.*|\1|p' /etc/apt/sources.list.d/ubuntu.sources) $cands"
-          best="" best_speed=0
+          : > "$RUNNER_TEMP/mirrors"
           for m in $(printf '%s\n' $cands | awk '!seen[$0]++'); do
-            speed=$(curl -fs -o /dev/null -m 20 -w '%{speed_download}' "http://$m/ubuntu/dists/noble/main/binary-amd64/Packages.xz") || speed=0
+            speed=$(curl -fs -o /dev/null -m 20 -w '%{speed_download}' "http://$m/ubuntu/dists/noble/main/binary-amd64/Packages.xz") || continue
             echo "$m: $speed bytes/s"
-            if awk -v a="$speed" -v b="$best_speed" 'BEGIN { exit !(a > b) }'; then best=$m best_speed=$speed; fi
+            echo "$speed $m" >> "$RUNNER_TEMP/mirrors"
           done
-          [ -z "$best" ] || sudo sed -i -E "s|^URIs: .*|URIs: http://$best/ubuntu/|" /etc/apt/sources.list.d/ubuntu.sources
+          if [ -s "$RUNNER_TEMP/mirrors" ]; then
+            sort -rn "$RUNNER_TEMP/mirrors" | awk '{ printf "http://%s/ubuntu/\tpriority:%d\n", $2, NR }' | sudo tee /etc/apt/fnas-mirrors.txt
+            sudo sed -i -E "s|^URIs: .*|URIs: mirror+file:/etc/apt/fnas-mirrors.txt|" /etc/apt/sources.list.d/ubuntu.sources
+          fi
           grep '^URIs' /etc/apt/sources.list.d/ubuntu.sources
           sudo apt-get update
           sudo apt-get install -y qemu-system-x86 qemu-utils xorriso xz-utils rsync zstd curl jq python3-venv
