@@ -1,0 +1,261 @@
+name: build-images
+run-name: build-images (${{ inputs.channel || github.event.client_payload.channel || 'dev' }})
+
+# Builds the FreedomNAS live ISOs and disk images with the scripts of
+# FreedomNAS/freedomnas-builder and publishes them as a release of this
+# repository, images-<n>. dev builds every repository's dev branch, main the
+# newest release tag (vX.Y.Z, the same name everywhere); the overlay is
+# always main. Started by hand, or by notify-image-builder in core, profiles
+# and webui on every push to their main (a repository_dispatch).
+#
+# The live ISO is built once and handed to the Linux image jobs as an
+# artifact, so they all start together; the FreeBSD live ISO and image run
+# beside them. changelog writes what changed since the previous release of
+# the same channel into the release text.
+
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: "dev or main"
+        type: choice
+        options: [dev, main]
+        default: dev
+  repository_dispatch:
+    types: [build-images]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-images-${{ inputs.channel || github.event.client_payload.channel || 'dev' }}
+  cancel-in-progress: false
+
+env:
+  FNAS_CHANNEL: ${{ inputs.channel || github.event.client_payload.channel || 'dev' }}
+  ORG_URL: https://github.com/FreedomNAS
+  RELEASE_NUMBER_OFFSET: 29
+
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    outputs:
+      ref: ${{ steps.ref.outputs.ref }}
+      tag: ${{ steps.ref.outputs.tag }}
+      name: ${{ steps.ref.outputs.name }}
+    steps:
+      - id: ref
+        run: |
+          case "$FNAS_CHANNEL" in dev|main) ;; *) echo "channel must be dev or main, not $FNAS_CHANNEL" >&2; exit 1 ;; esac
+          ref=dev
+          if [ "$FNAS_CHANNEL" = main ]; then
+            ref="$(git ls-remote --tags --refs "$ORG_URL/freedomnas-core.git" 'v*' \
+              | sed 's|.*refs/tags/||' | grep -E '^v[0-9]+(\.[0-9]+)*$' | sort -V | tail -n 1)"
+            [ -n "$ref" ] || { echo "no release tag on freedomnas-core" >&2; exit 1; }
+          fi
+          n=$(( GITHUB_RUN_NUMBER + RELEASE_NUMBER_OFFSET ))
+          echo "Building $ref as images-$n"
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+          echo "tag=images-$n" >> "$GITHUB_OUTPUT"
+          echo "name=FreedomNAS images, build $n ($ref)" >> "$GITHUB_OUTPUT"
+
+  live-iso:
+    needs: prepare
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    env:
+      SRC_REF: ${{ needs.prepare.outputs.ref }}
+      GH_RELEASE_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+      RELEASE_NAME: ${{ needs.prepare.outputs.name }}
+    steps:
+      - name: Install the host tools
+        run: |
+          sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|http://archive.ubuntu.com/ubuntu|' /etc/apt/sources.list.d/ubuntu.sources
+          sudo apt-get update
+          sudo apt-get install -y arch-install-scripts gnupg rsync xz-utils curl jq python3-venv zstd xorriso
+
+      - name: Check out the sources
+        run: |
+          for repo in builder core profiles installer webui docs; do
+            dir="freedomnas-$repo"; [ "$repo" = builder ] && dir=freedomnas-image-builder
+            git clone -q --depth 50 --branch "$SRC_REF" "$ORG_URL/freedomnas-$repo.git" "$dir"
+            echo "$dir $(git -C "$dir" log --oneline -1)"
+          done
+          git clone -q --depth 1 --branch main "$ORG_URL/freedomnas-overlay.git" freedomnas-overlay
+
+      - name: Build the live ISO
+        run: |
+          sudo env FNAS_CHANNEL="$FNAS_CHANNEL" FNAS_LIVE_WORK=/mnt/freedomnas-live \
+            freedomnas-image-builder/live/build.sh "$PWD/freedomnas-live.iso"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: live-iso
+          path: freedomnas-live.iso
+          retention-days: 1
+          compression-level: 0
+
+      - name: Publish
+        run: sh freedomnas-image-builder/ci/publish-release.sh freedomnas-live.iso
+
+  images:
+    name: Build ${{ matrix.image }} image
+    needs: [prepare, live-iso]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { edition: debian, image: debian }
+          - { edition: arch, image: arch }
+          - { edition: void, image: void }
+          - { edition: gentoo, image: gentoo }
+          - { edition: artix, init: openrc, image: artix-openrc }
+          - { edition: artix, init: dinit, image: artix-dinit }
+          - { edition: artix, init: runit, image: artix-runit }
+    env:
+      SRC_REF: ${{ needs.prepare.outputs.ref }}
+      GH_RELEASE_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+      RELEASE_NAME: ${{ needs.prepare.outputs.name }}
+    steps:
+      - name: Install the host tools
+        run: |
+          sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|http://archive.ubuntu.com/ubuntu|' /etc/apt/sources.list.d/ubuntu.sources
+          sudo apt-get update
+          sudo apt-get install -y qemu-system-x86 qemu-utils xorriso rsync zstd curl jq python3-venv
+
+      - name: Check out the sources
+        run: |
+          for repo in builder core profiles installer webui docs; do
+            dir="freedomnas-$repo"; [ "$repo" = builder ] && dir=freedomnas-image-builder
+            git clone -q --depth 50 --branch "$SRC_REF" "$ORG_URL/freedomnas-$repo.git" "$dir"
+          done
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: live-iso
+          path: ci
+
+      - name: Build the image
+        run: |
+          sudo env FNAS_LIVE_ISO="$PWD/ci/freedomnas-live.iso" FNAS_CHANNEL="$FNAS_CHANNEL" \
+            sh freedomnas-image-builder/${{ matrix.edition }}/build.sh ${{ matrix.init }} \
+            "$PWD/freedomnas-image-builder/${{ matrix.edition }}/${{ matrix.image }}.img"
+
+      - name: Install log
+        if: failure()
+        run: tail -n 80 freedomnas-image-builder/*/*.install.log 2>/dev/null || true
+
+      - name: Publish
+        run: |
+          sh freedomnas-image-builder/ci/publish-release.sh \
+            "freedomnas-image-builder/${{ matrix.edition }}/${{ matrix.image }}.img.zst"
+
+  freebsd-live-iso:
+    needs: prepare
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    env:
+      SRC_REF: ${{ needs.prepare.outputs.ref }}
+      GH_RELEASE_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+      RELEASE_NAME: ${{ needs.prepare.outputs.name }}
+    steps:
+      - name: Install the host tools
+        run: |
+          sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|http://archive.ubuntu.com/ubuntu|' /etc/apt/sources.list.d/ubuntu.sources
+          sudo apt-get update
+          sudo apt-get install -y qemu-system-x86 qemu-utils xorriso xz-utils rsync curl jq python3-venv
+
+      - name: Check out the sources
+        run: |
+          for repo in builder core profiles installer webui docs; do
+            dir="freedomnas-$repo"; [ "$repo" = builder ] && dir=freedomnas-image-builder
+            git clone -q --depth 50 --branch "$SRC_REF" "$ORG_URL/freedomnas-$repo.git" "$dir"
+          done
+
+      - name: Keep FreeBSD's VM image between runs
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/freebsd-cache
+          key: freebsd-images-cache-${{ github.run_id }}
+          restore-keys: freebsd-images-cache-
+
+      - name: Build the FreeBSD live ISO
+        run: |
+          sudo env FNAS_CHANNEL="$FNAS_CHANNEL" FNAS_CACHE_DIR="$RUNNER_TEMP/freebsd-cache" FREEBSD_BACKEND=qemu \
+            freedomnas-image-builder/freebsd/live.sh "$PWD/freedomnas-live-freebsd.iso"
+          sudo chown -R "$(id -u):$(id -g)" "$RUNNER_TEMP/freebsd-cache"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: freebsd-live-iso
+          path: freedomnas-live-freebsd.iso
+          retention-days: 1
+          compression-level: 0
+
+      - name: Publish
+        run: sh freedomnas-image-builder/ci/publish-release.sh freedomnas-live-freebsd.iso
+
+  freebsd-image:
+    name: Build freebsd image
+    needs: [prepare, freebsd-live-iso]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    env:
+      SRC_REF: ${{ needs.prepare.outputs.ref }}
+      GH_RELEASE_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+      RELEASE_NAME: ${{ needs.prepare.outputs.name }}
+    steps:
+      - name: Install the host tools
+        run: |
+          sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|http://archive.ubuntu.com/ubuntu|' /etc/apt/sources.list.d/ubuntu.sources
+          sudo apt-get update
+          sudo apt-get install -y qemu-system-x86 qemu-utils xorriso xz-utils rsync zstd curl jq python3-venv
+
+      - name: Check out the sources
+        run: |
+          for repo in builder core profiles installer webui docs; do
+            dir="freedomnas-$repo"; [ "$repo" = builder ] && dir=freedomnas-image-builder
+            git clone -q --depth 50 --branch "$SRC_REF" "$ORG_URL/freedomnas-$repo.git" "$dir"
+          done
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: freebsd-live-iso
+          path: ci
+
+      - name: Build the image
+        run: |
+          sudo env FNAS_FREEBSD_LIVE_ISO="$PWD/ci/freedomnas-live-freebsd.iso" FNAS_CHANNEL="$FNAS_CHANNEL" \
+            sh freedomnas-image-builder/freebsd/build.sh "$PWD/freedomnas-image-builder/freebsd/freebsd.img"
+
+      - name: Install log
+        if: failure()
+        run: tail -n 80 freedomnas-image-builder/freebsd/*.install.log 2>/dev/null || true
+
+      - name: Publish
+        run: sh freedomnas-image-builder/ci/publish-release.sh freedomnas-image-builder/freebsd/freebsd.img.zst
+
+  changelog:
+    needs: [prepare, live-iso, images, freebsd-live-iso, freebsd-image]
+    if: always() && needs.prepare.result == 'success'
+    runs-on: ubuntu-24.04
+    env:
+      SRC_REF: ${{ needs.prepare.outputs.ref }}
+      GH_RELEASE_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+    steps:
+      - name: Write the changes into the release
+        run: |
+          git clone -q --depth 1 --branch dev "$ORG_URL/freedomnas-builder.git" freedomnas-image-builder
+          sh freedomnas-image-builder/ci/changelog.sh

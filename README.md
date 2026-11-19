@@ -1,15 +1,14 @@
 # FreedomNAS images
 
 Ready-to-flash disk images and installer ISOs of
-[FreedomNAS](https://codeberg.org/FreedomNAS), the free, OS-agnostic NAS
+[FreedomNAS](https://github.com/FreedomNAS), the free, OS-agnostic NAS
 built on OpenZFS. Write an image to a disk, boot it, and finish the setup in
 your browser.
 
-This repository holds no code. The files are in its
+The files are in this repository's
 [**Releases**](https://github.com/FreedomNAS/freedomnas-image/releases):
-each one is uploaded there by the `build-images` workflow of
-[freedomnas-image-builder](https://codeberg.org/FreedomNAS/freedomnas-image-builder)
-on Codeberg, where FreedomNAS is developed.
+each one is built and uploaded by its `build-images` workflow, with the
+scripts of [freedomnas-builder](https://github.com/FreedomNAS/freedomnas-builder).
 
 ## Which release
 
@@ -127,10 +126,10 @@ a Debian one.
 
 ## Documentation and source
 
-- Documentation: <https://freedomnas.codeberg.page/freedomnas-docs/>,
+- Documentation: <https://freedomnas.github.io/freedomnas-docs/>,
   also available offline in every installed system's web interface at `/docs/`
-- Source code, issues and development: <https://codeberg.org/FreedomNAS>
-- How these images are built: [freedomnas-image-builder](https://codeberg.org/FreedomNAS/freedomnas-image-builder)
+- Source code, issues and development: <https://github.com/FreedomNAS>
+- How these images are built: [freedomnas-builder](https://github.com/FreedomNAS/freedomnas-builder)
 
 ## License
 
