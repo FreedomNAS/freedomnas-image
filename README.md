@@ -19,6 +19,8 @@ Every run of the workflow publishes one release, `images-<n>`:
 | `FreedomNAS images, build <n> (vX.Y.Z)` | the release tag `vX.Y.Z` | everyday use |
 | `FreedomNAS images, build <n> (dev)` | the `dev` branch | testing what comes next |
 
+Every version keeps its release, so older ones stay available. Of the
+development builds only the newest is kept: they are rebuilt every Monday.
 Pick the newest release whose name carries a version number unless you want to
 try the development builds. All of them are marked as pre-releases until
 FreedomNAS reaches 1.0.

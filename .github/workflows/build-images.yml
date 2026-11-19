@@ -311,3 +311,26 @@ jobs:
         run: |
           git clone -q --depth 1 --branch dev "$ORG_URL/freedomnas-builder.git" freedomnas-image-builder
           sh freedomnas-image-builder/ci/changelog.sh
+
+  # Of the dev builds only the newest stays: once every image of this one is
+  # out, the older dev releases go. The release of every tag stays.
+  prune-dev:
+    needs: [prepare, live-iso, images, freebsd-live-iso, freebsd-image, changelog]
+    if: >-
+      always() && needs.prepare.outputs.ref == 'dev'
+      && needs.live-iso.result == 'success' && needs.images.result == 'success'
+      && needs.freebsd-live-iso.result == 'success' && needs.freebsd-image.result == 'success'
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+    steps:
+      - name: Delete the older dev releases
+        run: |
+          gh release list -R "$GITHUB_REPOSITORY" -L 200 --json tagName,name \
+            --jq '.[] | select(.name | endswith("(dev)")) | .tagName' |
+          while read -r tag; do
+            [ "$tag" != "$RELEASE_TAG" ] || continue
+            echo "deleting $tag"
+            gh release delete "$tag" -R "$GITHUB_REPOSITORY" --cleanup-tag -y
+          done
