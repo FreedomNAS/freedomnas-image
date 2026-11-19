@@ -72,7 +72,14 @@ jobs:
     steps:
       - name: Install the host tools
         run: |
-          sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|http://archive.ubuntu.com/ubuntu|' /etc/apt/sources.list.d/ubuntu.sources
+          best="" best_time=999
+          for m in azure.archive.ubuntu.com archive.ubuntu.com us.archive.ubuntu.com; do
+            t=$(curl -s -o /dev/null -m 20 -w '%{time_total}' "http://$m/ubuntu/dists/noble/main/binary-amd64/Packages.xz" || echo 999)
+            echo "$m: ${t}s"
+            if awk -v a="$t" -v b="$best_time" 'BEGIN { exit !(a < b) }'; then best=$m best_time=$t; fi
+          done
+          [ -z "$best" ] || sudo sed -i -E "s|^URIs: http://[^ ]*ubuntu.com/ubuntu/?$|URIs: http://$best/ubuntu/|" /etc/apt/sources.list.d/ubuntu.sources
+          grep '^URIs' /etc/apt/sources.list.d/ubuntu.sources
           sudo apt-get update
           sudo apt-get install -y arch-install-scripts gnupg rsync xz-utils curl jq python3-venv zstd xorriso
 
@@ -125,7 +132,14 @@ jobs:
     steps:
       - name: Install the host tools
         run: |
-          sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|http://archive.ubuntu.com/ubuntu|' /etc/apt/sources.list.d/ubuntu.sources
+          best="" best_time=999
+          for m in azure.archive.ubuntu.com archive.ubuntu.com us.archive.ubuntu.com; do
+            t=$(curl -s -o /dev/null -m 20 -w '%{time_total}' "http://$m/ubuntu/dists/noble/main/binary-amd64/Packages.xz" || echo 999)
+            echo "$m: ${t}s"
+            if awk -v a="$t" -v b="$best_time" 'BEGIN { exit !(a < b) }'; then best=$m best_time=$t; fi
+          done
+          [ -z "$best" ] || sudo sed -i -E "s|^URIs: http://[^ ]*ubuntu.com/ubuntu/?$|URIs: http://$best/ubuntu/|" /etc/apt/sources.list.d/ubuntu.sources
+          grep '^URIs' /etc/apt/sources.list.d/ubuntu.sources
           sudo apt-get update
           sudo apt-get install -y qemu-system-x86 qemu-utils xorriso rsync zstd curl jq python3-venv
 
@@ -169,7 +183,14 @@ jobs:
     steps:
       - name: Install the host tools
         run: |
-          sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|http://archive.ubuntu.com/ubuntu|' /etc/apt/sources.list.d/ubuntu.sources
+          best="" best_time=999
+          for m in azure.archive.ubuntu.com archive.ubuntu.com us.archive.ubuntu.com; do
+            t=$(curl -s -o /dev/null -m 20 -w '%{time_total}' "http://$m/ubuntu/dists/noble/main/binary-amd64/Packages.xz" || echo 999)
+            echo "$m: ${t}s"
+            if awk -v a="$t" -v b="$best_time" 'BEGIN { exit !(a < b) }'; then best=$m best_time=$t; fi
+          done
+          [ -z "$best" ] || sudo sed -i -E "s|^URIs: http://[^ ]*ubuntu.com/ubuntu/?$|URIs: http://$best/ubuntu/|" /etc/apt/sources.list.d/ubuntu.sources
+          grep '^URIs' /etc/apt/sources.list.d/ubuntu.sources
           sudo apt-get update
           sudo apt-get install -y qemu-system-x86 qemu-utils xorriso xz-utils rsync curl jq python3-venv
 
@@ -217,7 +238,14 @@ jobs:
     steps:
       - name: Install the host tools
         run: |
-          sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|http://archive.ubuntu.com/ubuntu|' /etc/apt/sources.list.d/ubuntu.sources
+          best="" best_time=999
+          for m in azure.archive.ubuntu.com archive.ubuntu.com us.archive.ubuntu.com; do
+            t=$(curl -s -o /dev/null -m 20 -w '%{time_total}' "http://$m/ubuntu/dists/noble/main/binary-amd64/Packages.xz" || echo 999)
+            echo "$m: ${t}s"
+            if awk -v a="$t" -v b="$best_time" 'BEGIN { exit !(a < b) }'; then best=$m best_time=$t; fi
+          done
+          [ -z "$best" ] || sudo sed -i -E "s|^URIs: http://[^ ]*ubuntu.com/ubuntu/?$|URIs: http://$best/ubuntu/|" /etc/apt/sources.list.d/ubuntu.sources
+          grep '^URIs' /etc/apt/sources.list.d/ubuntu.sources
           sudo apt-get update
           sudo apt-get install -y qemu-system-x86 qemu-utils xorriso xz-utils rsync zstd curl jq python3-venv
 
