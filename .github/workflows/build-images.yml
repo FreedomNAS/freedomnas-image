@@ -86,8 +86,9 @@ jobs:
             sudo sed -i -E "s|^URIs: .*|URIs: mirror+file:/etc/apt/fnas-mirrors.txt|" /etc/apt/sources.list.d/ubuntu.sources
           fi
           grep '^URIs' /etc/apt/sources.list.d/ubuntu.sources
+          echo 'Acquire::Retries "5";' | sudo tee /etc/apt/apt.conf.d/80-retries >/dev/null
           sudo apt-get update
-          sudo apt-get install -y arch-install-scripts gnupg rsync xz-utils curl jq python3-venv zstd xorriso
+          for try in 1 2 3; do sudo apt-get install -y arch-install-scripts gnupg rsync xz-utils curl jq python3-venv zstd xorriso && break; [ "$try" = 3 ] && exit 1; sleep 20; sudo apt-get update; done
 
       - name: Check out the sources
         run: |
@@ -152,8 +153,9 @@ jobs:
             sudo sed -i -E "s|^URIs: .*|URIs: mirror+file:/etc/apt/fnas-mirrors.txt|" /etc/apt/sources.list.d/ubuntu.sources
           fi
           grep '^URIs' /etc/apt/sources.list.d/ubuntu.sources
+          echo 'Acquire::Retries "5";' | sudo tee /etc/apt/apt.conf.d/80-retries >/dev/null
           sudo apt-get update
-          sudo apt-get install -y qemu-system-x86 qemu-utils xorriso rsync zstd curl jq python3-venv
+          for try in 1 2 3; do sudo apt-get install -y qemu-system-x86 qemu-utils xorriso rsync zstd curl jq python3-venv && break; [ "$try" = 3 ] && exit 1; sleep 20; sudo apt-get update; done
 
       - name: Check out the sources
         run: |
@@ -209,8 +211,9 @@ jobs:
             sudo sed -i -E "s|^URIs: .*|URIs: mirror+file:/etc/apt/fnas-mirrors.txt|" /etc/apt/sources.list.d/ubuntu.sources
           fi
           grep '^URIs' /etc/apt/sources.list.d/ubuntu.sources
+          echo 'Acquire::Retries "5";' | sudo tee /etc/apt/apt.conf.d/80-retries >/dev/null
           sudo apt-get update
-          sudo apt-get install -y qemu-system-x86 qemu-utils xorriso xz-utils rsync curl jq python3-venv
+          for try in 1 2 3; do sudo apt-get install -y qemu-system-x86 qemu-utils xorriso xz-utils rsync curl jq python3-venv && break; [ "$try" = 3 ] && exit 1; sleep 20; sudo apt-get update; done
 
       - name: Check out the sources
         run: |
@@ -270,8 +273,9 @@ jobs:
             sudo sed -i -E "s|^URIs: .*|URIs: mirror+file:/etc/apt/fnas-mirrors.txt|" /etc/apt/sources.list.d/ubuntu.sources
           fi
           grep '^URIs' /etc/apt/sources.list.d/ubuntu.sources
+          echo 'Acquire::Retries "5";' | sudo tee /etc/apt/apt.conf.d/80-retries >/dev/null
           sudo apt-get update
-          sudo apt-get install -y qemu-system-x86 qemu-utils xorriso xz-utils rsync zstd curl jq python3-venv
+          for try in 1 2 3; do sudo apt-get install -y qemu-system-x86 qemu-utils xorriso xz-utils rsync zstd curl jq python3-venv && break; [ "$try" = 3 ] && exit 1; sleep 20; sudo apt-get update; done
 
       - name: Check out the sources
         run: |
