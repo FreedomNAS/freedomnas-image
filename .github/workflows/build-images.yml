@@ -1,12 +1,12 @@
 name: build-images
-run-name: build-images (${{ inputs.channel || github.event.client_payload.channel || 'dev' }})
+run-name: build-images (${{ inputs.channel || 'dev' }})
 
 # Builds the FreedomNAS live ISOs and disk images with the scripts of
 # FreedomNAS/freedomnas-builder and publishes them as a release of this
-# repository, images-<n>. dev builds every repository's dev branch, main the
-# newest release tag (vX.Y.Z, the same name everywhere); the overlay is
-# always main. Started by hand, or by notify-image-builder in core, profiles
-# and webui on every push to their main (a repository_dispatch).
+# repository, images-<n>. dev builds every repository's dev branch, every
+# Monday; main the newest release tag (vX.Y.Z, the same name everywhere),
+# started by release-check once every package repository has published it.
+# The overlay is always main. Both can also be started by hand.
 #
 # The live ISO is built once and handed to the Linux image jobs as an
 # artifact, so they all start together; the FreeBSD live ISO and image run
@@ -21,18 +21,18 @@ on:
         type: choice
         options: [dev, main]
         default: dev
-  repository_dispatch:
-    types: [build-images]
+  schedule:
+    - cron: "0 2 * * 1"
 
 permissions:
   contents: write
 
 concurrency:
-  group: build-images-${{ inputs.channel || github.event.client_payload.channel || 'dev' }}
+  group: build-images-${{ inputs.channel || 'dev' }}
   cancel-in-progress: false
 
 env:
-  FNAS_CHANNEL: ${{ inputs.channel || github.event.client_payload.channel || 'dev' }}
+  FNAS_CHANNEL: ${{ inputs.channel || 'dev' }}
   ORG_URL: https://github.com/FreedomNAS
   RELEASE_NUMBER_OFFSET: 29
 

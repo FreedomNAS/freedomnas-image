@@ -1,0 +1,69 @@
+name: release-check
+
+# Starts the release images (build-images, channel main) once every package
+# repository holds the newest release tag's version: each package
+# repository's main build sends a packages-published dispatch when it ends,
+# and this check also runs every day. Nothing is started when that tag
+# already has its images, or while a main build is running.
+
+on:
+  repository_dispatch:
+    types: [packages-published]
+  schedule:
+    - cron: "23 6 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: release-check
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+      ORG_URL: https://github.com/FreedomNAS
+    steps:
+      - name: Are all package repositories on the newest tag?
+        run: |
+          tag="$(git ls-remote --tags --refs "$ORG_URL/freedomnas-core.git" 'v*' \
+            | sed 's|.*refs/tags/||' | grep -E '^v[0-9]+(\.[0-9]+)*$' | sort -V | tail -n 1)"
+          [ -n "$tag" ] || { echo "no release tag on freedomnas-core" >&2; exit 1; }
+          v="${tag#v}"
+          echo "Newest tag: $tag"
+
+          if gh release list -R "$GITHUB_REPOSITORY" -L 100 --json name --jq '.[].name' | grep -qF "($tag)"; then
+            echo "$tag already has its images"
+            exit 0
+          fi
+          if gh run list -R "$GITHUB_REPOSITORY" -w build-images -L 20 --json displayTitle,status \
+              --jq '.[] | select(.status != "completed" and (.displayTitle | test("main"))) | .status' | grep -q .; then
+            echo "a main image build is already running"
+            exit 0
+          fi
+
+          missing=""
+          check() {
+            if gh release view "$2" -R "FreedomNAS/$1" --json assets --jq '.assets[].name' | grep -qxE "$3"; then
+              echo "$1: $v published"
+            else
+              echo "$1: $v not published yet"
+              missing="$missing $1"
+            fi
+          }
+          ve="$(printf '%s' "$v" | sed 's/\./\\./g')"
+          check freedomnas-deb apt-main "freedomnas-core_${ve}-[0-9]+_all\.deb"
+          check freedomnas-arch pacman-main "freedomnas-core-${ve}-[0-9]+-any\.pkg\.tar\.zst"
+          check freedomnas-void xbps-main "freedomnas-core-${ve}_[0-9]+\.noarch\.xbps"
+          check freedomnas-freebsd pkg-15-main "freedomnas-core-${ve}\.pkg"
+          if [ -n "$missing" ]; then
+            echo "Waiting for:$missing"
+            exit 0
+          fi
+
+          echo "Starting the $tag images"
+          gh workflow run build-images.yml -R "$GITHUB_REPOSITORY" -f channel=main
