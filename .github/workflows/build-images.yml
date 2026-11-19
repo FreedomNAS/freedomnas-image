@@ -73,7 +73,8 @@ jobs:
       - name: Install the host tools
         run: |
           best="" best_time=999
-          for m in azure.archive.ubuntu.com archive.ubuntu.com us.archive.ubuntu.com; do
+          current=$(sed -n 's|^URIs: http://\([^/]*\)/ubuntu/\?$|\1|p' /etc/apt/sources.list.d/ubuntu.sources | head -n 1)
+          for m in $current azure.archive.ubuntu.com archive.ubuntu.com us.archive.ubuntu.com; do
             t=$(curl -s -o /dev/null -m 20 -w '%{time_total}' "http://$m/ubuntu/dists/noble/main/binary-amd64/Packages.xz" || echo 999)
             echo "$m: ${t}s"
             if awk -v a="$t" -v b="$best_time" 'BEGIN { exit !(a < b) }'; then best=$m best_time=$t; fi
@@ -133,7 +134,8 @@ jobs:
       - name: Install the host tools
         run: |
           best="" best_time=999
-          for m in azure.archive.ubuntu.com archive.ubuntu.com us.archive.ubuntu.com; do
+          current=$(sed -n 's|^URIs: http://\([^/]*\)/ubuntu/\?$|\1|p' /etc/apt/sources.list.d/ubuntu.sources | head -n 1)
+          for m in $current azure.archive.ubuntu.com archive.ubuntu.com us.archive.ubuntu.com; do
             t=$(curl -s -o /dev/null -m 20 -w '%{time_total}' "http://$m/ubuntu/dists/noble/main/binary-amd64/Packages.xz" || echo 999)
             echo "$m: ${t}s"
             if awk -v a="$t" -v b="$best_time" 'BEGIN { exit !(a < b) }'; then best=$m best_time=$t; fi
@@ -184,7 +186,8 @@ jobs:
       - name: Install the host tools
         run: |
           best="" best_time=999
-          for m in azure.archive.ubuntu.com archive.ubuntu.com us.archive.ubuntu.com; do
+          current=$(sed -n 's|^URIs: http://\([^/]*\)/ubuntu/\?$|\1|p' /etc/apt/sources.list.d/ubuntu.sources | head -n 1)
+          for m in $current azure.archive.ubuntu.com archive.ubuntu.com us.archive.ubuntu.com; do
             t=$(curl -s -o /dev/null -m 20 -w '%{time_total}' "http://$m/ubuntu/dists/noble/main/binary-amd64/Packages.xz" || echo 999)
             echo "$m: ${t}s"
             if awk -v a="$t" -v b="$best_time" 'BEGIN { exit !(a < b) }'; then best=$m best_time=$t; fi
@@ -239,7 +242,8 @@ jobs:
       - name: Install the host tools
         run: |
           best="" best_time=999
-          for m in azure.archive.ubuntu.com archive.ubuntu.com us.archive.ubuntu.com; do
+          current=$(sed -n 's|^URIs: http://\([^/]*\)/ubuntu/\?$|\1|p' /etc/apt/sources.list.d/ubuntu.sources | head -n 1)
+          for m in $current azure.archive.ubuntu.com archive.ubuntu.com us.archive.ubuntu.com; do
             t=$(curl -s -o /dev/null -m 20 -w '%{time_total}' "http://$m/ubuntu/dists/noble/main/binary-amd64/Packages.xz" || echo 999)
             echo "$m: ${t}s"
             if awk -v a="$t" -v b="$best_time" 'BEGIN { exit !(a < b) }'; then best=$m best_time=$t; fi
